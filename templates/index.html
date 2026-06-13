@@ -4,6 +4,12 @@
     <meta charset="UTF-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
     <title>Sparkling Studio Pro</title> 
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#050505">
+    <link rel="icon" type="image/png" href="/statics/icon-192.png">
+    <link rel="apple-touch-icon" href="/statics/icon-192.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap" rel="stylesheet"> 
     <style> 
         :root { 
@@ -203,6 +209,15 @@
     </div> 
     
     <script> 
+        // --- PWA SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Service Worker Registered Successfully!'))
+                    .catch(err => console.error('PWA Registration Error:', err));
+            });
+        }
+
         let activePollingIntervals = {}; 
         
         function toggleMenu() { 
@@ -215,7 +230,6 @@
             document.getElementById('nav-queue').classList.remove('active'); 
             document.getElementById('nav-history').classList.remove('active'); 
             
-            // अगर Docs पर क्लिक नहीं किया है तभी बाकी को एक्टिव करें
             if(document.getElementById(`nav-${viewName}`)) {
                 document.getElementById(`nav-${viewName}`).classList.add('active'); 
             }
@@ -318,7 +332,7 @@
                     } else if (isForced) { 
                         promptInput.value = ''; 
                         closeModal(); 
-                        switchView('queue'); // कतार में डालने के बाद सीधे Queue पेज पर ले जाएं 
+                        switchView('queue'); 
                     } else { 
                         startPolling(data.task_id, true, prompt); 
                     } 
@@ -336,14 +350,13 @@
         } 
         
         function startPolling(taskId, isMainDisplay, prompt) { 
-            if(activePollingIntervals[taskId]) return; // Avoid double polling 
+            if(activePollingIntervals[taskId]) return; 
             
             const interval = setInterval(async () => { 
                 try { 
                     const res = await fetch(`/api/status/${taskId}`); 
                     const data = await res.json(); 
                     
-                    // Queue UI update logic 
                     const tag = document.getElementById(`tag-${taskId}`); 
                     if (tag) { 
                         tag.innerText = data.status; 
@@ -396,7 +409,7 @@
             } 
         } 
         
-        // --- LIVE QUEUE LOGIC (NEW) --- 
+        // --- LIVE QUEUE LOGIC --- 
         async function loadLiveQueue() { 
             const list = document.getElementById('liveQueueList'); 
             list.innerHTML = '<div class="empty-state">Loading tasks...</div>'; 
@@ -417,7 +430,6 @@
                     `; 
                     list.appendChild(item); 
                     
-                    // अगर टास्क पेंडिंग है और उसकी पोलिंग नहीं चल रही है, तो पोलिंग शुरू करें (यह रीलोड के बाद काम आएगा) 
                     if ((task.status === 'processing' || task.status === 'queued') && !activePollingIntervals[task.task_id]) { 
                         startPolling(task.task_id, false, task.prompt); 
                     } else if (task.status === 'completed') { 
