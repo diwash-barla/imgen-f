@@ -1,0 +1,22 @@
+{
+  "name": "Sparkling Studio Pro",
+  "short_name": "Sparkling Studio",
+  "description": "Pro-Grade AI Image Generator Portal with Microservices Architecture",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0b0e",
+  "theme_color": "#ffca28",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/statics/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/statics/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
