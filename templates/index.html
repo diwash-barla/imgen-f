@@ -1,0 +1,515 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+    <title>Sparkling Studio Pro</title> 
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap" rel="stylesheet"> 
+    <style> 
+        :root { 
+            --bg: #050505; 
+            --card: #121214; 
+            --accent: #8b5cf6; 
+            --accent-dim: rgba(139, 92, 246, 0.15); 
+            --text: #ffffff; 
+            --text-dim: #a1a1aa; 
+            --border: #1f1f23; 
+            --danger: #ef4444; 
+        } 
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; } 
+        body { background: var(--bg); color: var(--text); font-family: 'Urbanist', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; } 
+        header { width: 100%; padding: 16px 20px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 50; } 
+        .menu-btn { background: transparent; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; margin-right: 16px; } 
+        .app-title { font-weight: 700; font-size: 22px; letter-spacing: -0.5px; flex: 1; } 
+        .app-title span { color: var(--accent); } 
+        
+        /* SIDEBAR */ 
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 90; opacity: 0; visibility: hidden; transition: 0.3s ease; } 
+        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: var(--card); border-right: 1px solid var(--border); z-index: 100; padding: 24px; transition: 0.3s ease; display: flex; flex-direction: column; } 
+        .sidebar.open { left: 0; } 
+        .sidebar-overlay.open { opacity: 1; visibility: visible; } 
+        .sidebar-header { font-size: 20px; font-weight: 700; color: white; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 16px;} 
+        .sidebar-header span { color: var(--accent); } 
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px; color: var(--text-dim); font-weight: 600; font-size: 15px; border-radius: 12px; cursor: pointer; transition: 0.2s; margin-bottom: 8px; } 
+        .nav-item.active, .nav-item:hover { background: var(--accent-dim); color: var(--accent); } 
+        
+        /* VIEWS */ 
+        .view-section { width: 100%; max-width: 480px; padding: 16px; display: none; flex-direction: column; } 
+        .view-section.active { display: flex; } 
+        
+        /* --- STUDIO UI --- */ 
+        .preview-container { width: 100%; aspect-ratio: 1/1; background: var(--card); border-radius: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); margin-bottom: 16px; position: relative; transition: aspect-ratio 0.3s ease; } 
+        .preview-container img { width: 100%; height: 100%; object-fit: contain; transition: filter 0.3s ease, transform 0.3s ease; } 
+        .generating-active img { filter: blur(20px) contrast(1.2) saturate(1.5); transform: scale(1.02); animation: pixelPulse 1.5s infinite alternate ease-in-out; } 
+        @keyframes pixelPulse { 0% { filter: blur(25px) contrast(1.3); } 100% { filter: blur(15px) contrast(1.1); } } 
+        .placeholder-text { color: #3f3f46; text-align: center; padding: 20px; font-size: 15px; font-weight: 600; } 
+        .prompt-box { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 8px 12px; display: flex; align-items: center; margin-bottom: 12px; } 
+        .prompt-box input { background: transparent; border: none; color: white; flex: 1; padding: 12px 6px; font-size: 16px; outline: none; } 
+        .generate-btn { background: var(--accent); border: none; width: 46px; height: 46px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; } 
+        .generate-btn:disabled { background: #3f3f46; cursor: not-allowed; } 
+        .toggle-text-btn { background: transparent; border: none; color: var(--text-dim); font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 4px 0; width: fit-content; } 
+        .expandable-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; margin-bottom: 4px; } 
+        .expandable-panel.open { max-height: 120px; margin-bottom: 16px; } 
+        .panel-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; color: white; font-size: 14px; outline: none; } 
+        .seed-row { display: flex; gap: 10px; align-items: center; } 
+        .section-label { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; } 
+        .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; } 
+        .style-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 6px; text-align: center; cursor: pointer; transition: 0.2s; } 
+        .style-item.active { border-color: var(--accent); background: var(--accent-dim); } 
+        .style-item span { font-size: 13px; font-weight: 600; display: block; } 
+        .ratio-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; } 
+        .ratio-btn { background: var(--card); border: 1px solid var(--border); padding: 12px 4px; border-radius: 14px; color: var(--text-dim); font-weight: 600; font-size: 13px; cursor: pointer; } 
+        .ratio-btn.active { background: white; color: black; border-color: white; } 
+        .custom-dims-row { display: flex; gap: 8px; max-height: 0; overflow: hidden; transition: max-height 0.2s ease; } 
+        .custom-dims-row.open { max-height: 60px; margin-bottom: 16px; } 
+        .custom-dims-row input { flex: 1; text-align: center; } 
+        
+        /* --- LIVE QUEUE UI --- */ 
+        .queue-refresh-btn { width: 100%; background: var(--card); border: 1px solid var(--border); color: white; padding: 14px; border-radius: 14px; font-weight: 700; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; } 
+        .queue-list-full { display: flex; flex-direction: column; gap: 12px; } 
+        .queue-item { background: var(--card); border: 1px solid var(--border); padding: 16px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;} 
+        .queue-item .info { font-size: 14px; flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } 
+        .queue-item .status-tag { font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 8px; text-transform: uppercase;} 
+        .status-queued { background: #27272a; color: var(--text-dim); } 
+        .status-processing { background: rgba(139, 92, 246, 0.2); color: var(--accent); animation: pulseTag 1.5s infinite; } 
+        .status-completed { background: rgba(16, 185, 129, 0.2); color: #10b981; cursor: pointer; } 
+        .status-failed { background: rgba(239, 68, 68, 0.2); color: #ef4444; } 
+        @keyframes pulseTag { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } } 
+        
+        /* --- HISTORY UI --- */ 
+        .history-grid { display: flex; flex-direction: column; gap: 20px; } 
+        .history-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; position: relative; } 
+        .history-card img { width: 100%; height: auto; display: block; background: #000; } 
+        .hist-info { padding: 16px; } 
+        .hist-prompt { font-size: 15px; font-weight: 600; color: white; margin-bottom: 8px; line-height: 1.4; } 
+        .hist-meta { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; } 
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: 0.2s; } 
+        .delete-btn:hover { background: var(--danger); border-color: var(--danger); } 
+        .lazy-loader { display: none; text-align: center; padding: 20px; color: var(--text-dim); font-weight: 600; font-size: 14px;} 
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 15px; font-weight: 600; } 
+        
+        /* MODALS */ 
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; padding: 20px; } 
+        .modal-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 24px; width: 100%; max-width: 400px; text-align: center; } 
+        .modal-card h3 { margin: 0 0 10px 0; font-size: 18px; } 
+        .modal-card p { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; } 
+        .modal-buttons { display: flex; gap: 10px; } 
+        .modal-btn { flex: 1; padding: 12px; border-radius: 12px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; } 
+        .modal-btn.primary { background: var(--accent); color: white; } 
+        .modal-btn.secondary { background: #27272a; color: var(--text-dim); } 
+        .svg-icon { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; } 
+        .ring-loader { display: none; position: absolute; width: 36px; height: 36px; border: 3.5px solid rgba(255,255,255,0.05); border-radius: 50%; border-top-color: var(--accent); animation: spin 0.8s linear infinite; z-index: 2; } 
+        @keyframes spin { to { transform: rotate(360deg); } } 
+    </style> 
+</head> 
+<body> 
+    <header> 
+        <button class="menu-btn" onclick="toggleMenu()"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg> 
+        </button> 
+        <div class="app-title">Sparkling <span>Studio</span></div> 
+    </header> 
+    
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div> 
+    
+    <div class="sidebar" id="sidebar"> 
+        <div class="sidebar-header">Sparkling <span>Menu</span></div> 
+        <div class="nav-item active" id="nav-studio" onclick="switchView('studio')"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></svg> Studio 
+        </div> 
+        <div class="nav-item" id="nav-queue" onclick="switchView('queue')"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Live Tasks 
+        </div> 
+        <div class="nav-item" id="nav-history" onclick="switchView('history')"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg> History & Cache 
+        </div> 
+        <div class="nav-item" id="nav-docs" onclick="window.location.href='/docs'"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> API Docs 
+        </div>
+    </div> 
+    
+    <div class="view-section active" id="view-studio"> 
+        <div class="preview-container" id="previewArea"> 
+            <div id="loader" class="ring-loader"></div> 
+            <img id="resultImg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'></svg>" style="display:none;"> 
+            <div id="placeholder" class="placeholder-text">Your masterpiece will emerge here</div> 
+        </div> 
+        <div class="prompt-box"> 
+            <input type="text" id="prompt" placeholder="Describe your vision..."> 
+            <button class="generate-btn" id="genBtn" onclick="generate(false)"> 
+                <svg class="svg-icon" style="color:white; stroke-width: 2.5;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg> 
+            </button> 
+        </div> 
+        <button class="toggle-text-btn" onclick="togglePanel('negPanel')"> 
+            <svg class="svg-icon" style="width:14px; height:14px;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add Negative Prompt 
+        </button> 
+        <div class="expandable-panel" id="negPanel"> 
+            <input type="text" id="negativePrompt" class="panel-input" placeholder="What to exclude from image..."> 
+        </div> 
+        <button class="toggle-text-btn" onclick="togglePanel('seedPanel')"> 
+            <svg class="svg-icon" style="width:14px; height:14px;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Advanced Seed Setup 
+        </button> 
+        <div class="expandable-panel" id="seedPanel"> 
+            <div class="seed-row"> 
+                <input type="number" id="customSeed" class="panel-input" placeholder="Seed (e.g. 42069)" style="flex:1;"> 
+                <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-dim); cursor:pointer;"> 
+                    <input type="checkbox" id="useRandom" checked> Random 
+                </label> 
+            </div> 
+        </div> 
+        <div class="section-label">Select Style</div> 
+        <div class="style-grid"> 
+            <div class="style-item active" onclick="selectStyle(this, 'Cinematic')"><span>Cinematic</span></div> 
+            <div class="style-item" onclick="selectStyle(this, 'Realistic')"><span>Realistic</span></div> 
+            <div class="style-item" onclick="selectStyle(this, 'Anime')"><span>Anime</span></div> 
+            <div class="style-item" onclick="selectStyle(this, 'Cosmic')"><span>Cosmic</span></div> 
+            <div class="style-item" onclick="selectStyle(this, 'Oil Painting')"><span>Oil Paint</span></div> 
+            <div class="style-item" onclick="selectStyle(this, 'No Style')"><span>No Style</span></div> 
+        </div> 
+        <div class="section-label">Aspect Ratio</div> 
+        <div class="ratio-box"> 
+            <button class="ratio-btn active" onclick="selectRatio(this, '1:1')">1:1</button> 
+            <button class="ratio-btn" onclick="selectRatio(this, '16:9')">16:9</button> 
+            <button class="ratio-btn" onclick="selectRatio(this, '9:16')">9:16</button> 
+            <button class="ratio-btn" onclick="selectRatio(this, 'Custom')">Custom</button> 
+        </div> 
+        <div class="custom-dims-row" id="customDims"> 
+            <input type="number" id="customWidth" class="panel-input" placeholder="Width" value="1024"> 
+            <input type="number" id="customHeight" class="panel-input" placeholder="Height" value="1024"> 
+        </div> 
+    </div> 
+    
+    <div class="view-section" id="view-queue"> 
+        <button class="queue-refresh-btn" onclick="loadLiveQueue()"> 
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Refresh Progress 
+        </button> 
+        <div class="queue-list-full" id="liveQueueList"></div> 
+    </div> 
+    
+    <div class="view-section" id="view-history"> 
+        <div class="history-grid" id="historyGrid"></div> 
+        <div id="historyLoader" class="lazy-loader">Loading more magic...</div> 
+    </div> 
+    
+    <div class="modal-overlay" id="busyModal"> 
+        <div class="modal-card"> 
+            <h3>Engine is Busy!</h3> 
+            <p>An image is already being processed. Add this prompt to the background queue?</p> 
+            <div class="modal-buttons"> 
+                <button class="modal-btn primary" onclick="addCurrentToQueue()">Add to Queue</button> 
+                <button class="modal-btn secondary" onclick="closeModal()">Cancel</button> 
+            </div> 
+        </div> 
+    </div> 
+    
+    <script> 
+        let activePollingIntervals = {}; 
+        
+        function toggleMenu() { 
+            document.getElementById('sidebar').classList.toggle('open'); 
+            document.getElementById('sidebarOverlay').classList.toggle('open'); 
+        } 
+        
+        function switchView(viewName) { 
+            document.getElementById('nav-studio').classList.remove('active'); 
+            document.getElementById('nav-queue').classList.remove('active'); 
+            document.getElementById('nav-history').classList.remove('active'); 
+            
+            // अगर Docs पर क्लिक नहीं किया है तभी बाकी को एक्टिव करें
+            if(document.getElementById(`nav-${viewName}`)) {
+                document.getElementById(`nav-${viewName}`).classList.add('active'); 
+            }
+            
+            document.getElementById('view-studio').classList.remove('active'); 
+            document.getElementById('view-queue').classList.remove('active'); 
+            document.getElementById('view-history').classList.remove('active'); 
+            document.getElementById(`view-${viewName}`).classList.add('active'); 
+            
+            toggleMenu(); 
+            if (viewName === 'history') loadHistory(true); 
+            if (viewName === 'queue') loadLiveQueue(); 
+        } 
+        
+        // STUDIO UI 
+        let currentStyle = "Cinematic"; 
+        let currentRatio = "1:1"; 
+        
+        function togglePanel(panelId) { 
+            document.getElementById(panelId).classList.toggle('open'); 
+        } 
+        
+        function closeModal() { 
+            document.getElementById('busyModal').style.display = 'none'; 
+        } 
+        
+        function selectStyle(el, style) { 
+            document.querySelectorAll('.style-item').forEach(i => i.classList.remove('active')); 
+            el.classList.add('active'); 
+            currentStyle = style; 
+        } 
+        
+        function selectRatio(el, ratio) { 
+            document.querySelectorAll('.ratio-btn').forEach(i => i.classList.remove('active')); 
+            el.classList.add('active'); 
+            currentRatio = ratio; 
+            const preview = document.getElementById('previewArea'); 
+            const customDims = document.getElementById('customDims'); 
+            if (ratio === 'Custom') { 
+                customDims.classList.add('open'); 
+                preview.style.aspectRatio = "1/1"; 
+            } else { 
+                customDims.classList.remove('open'); 
+                if(ratio === '16:9') preview.style.aspectRatio = "16/9"; 
+                else if(ratio === '9:16') preview.style.aspectRatio = "9/16"; 
+                else preview.style.aspectRatio = "1/1"; 
+            } 
+        } 
+        
+        async function generate(isForced) { 
+            const promptInput = document.getElementById('prompt'); 
+            const prompt = promptInput.value; 
+            if(!prompt) return; 
+            const genBtn = document.getElementById('genBtn'); 
+            const loader = document.getElementById('loader'); 
+            const img = document.getElementById('resultImg'); 
+            const placeholder = document.getElementById('placeholder'); 
+            const previewArea = document.getElementById('previewArea'); 
+            
+            if (!isForced) { 
+                genBtn.disabled = true; 
+                loader.style.display = 'block'; 
+                placeholder.style.display = 'none'; 
+                if(!img.src || img.src.startsWith('data:image/svg')) { 
+                    img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><rect width='512' height='512' fill='%23121214'/></svg>"; 
+                } 
+                img.style.display = 'block'; 
+                previewArea.classList.add('generating-active'); 
+            } 
+            
+            const payload = { 
+                prompt: prompt, 
+                user_negative: document.getElementById('negativePrompt').value, 
+                style_name: currentStyle, 
+                ratio: currentRatio, 
+                custom_width: parseInt(document.getElementById('customWidth').value) || 1024, 
+                custom_height: parseInt(document.getElementById('customHeight').value) || 1024, 
+                custom_seed: parseInt(document.getElementById('customSeed').value) || 0, 
+                use_random: document.getElementById('useRandom').checked, 
+                force_queue: isForced 
+            }; 
+            
+            try { 
+                const res = await fetch('/api/generate', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(payload) 
+                }); 
+                const data = await res.json(); 
+                
+                if (data.status === 'busy') { 
+                    document.getElementById('busyModal').style.display = 'flex'; 
+                    previewArea.classList.remove('generating-active'); 
+                    loader.style.display = 'none'; 
+                    genBtn.disabled = false; 
+                } else if (data.status === 'accepted') { 
+                    if (data.cached) { 
+                        alert("Magic Cache Hit! Retrieved from History (90%+ Match)"); 
+                        displayMainImage(data.image, data.seed); 
+                    } else if (isForced) { 
+                        promptInput.value = ''; 
+                        closeModal(); 
+                        switchView('queue'); // कतार में डालने के बाद सीधे Queue पेज पर ले जाएं 
+                    } else { 
+                        startPolling(data.task_id, true, prompt); 
+                    } 
+                } 
+            } catch (e) { 
+                alert("Error connecting to server."); 
+                previewArea.classList.remove('generating-active'); 
+                loader.style.display = 'none'; 
+                genBtn.disabled = false; 
+            } 
+        } 
+        
+        function addCurrentToQueue() { 
+            generate(true); 
+        } 
+        
+        function startPolling(taskId, isMainDisplay, prompt) { 
+            if(activePollingIntervals[taskId]) return; // Avoid double polling 
+            
+            const interval = setInterval(async () => { 
+                try { 
+                    const res = await fetch(`/api/status/${taskId}`); 
+                    const data = await res.json(); 
+                    
+                    // Queue UI update logic 
+                    const tag = document.getElementById(`tag-${taskId}`); 
+                    if (tag) { 
+                        tag.innerText = data.status; 
+                        tag.className = `status-tag status-${data.status}`; 
+                    } 
+                    
+                    if (data.status === 'processing' && isMainDisplay) { 
+                        document.getElementById('previewArea').classList.add('generating-active'); 
+                    } 
+                    
+                    if (data.status === 'completed') { 
+                        clearInterval(interval); 
+                        delete activePollingIntervals[taskId]; 
+                        if (isMainDisplay) { 
+                            displayMainImage(data.image, data.seed); 
+                        } else { 
+                            if (tag) { 
+                                tag.innerText = "View Result"; 
+                                tag.onclick = () => { 
+                                    document.getElementById('prompt').value = prompt; 
+                                    switchView('studio'); 
+                                    displayMainImage(data.image, data.seed); 
+                                }; 
+                            } 
+                        } 
+                    } else if (data.status === 'failed') { 
+                        clearInterval(interval); 
+                        delete activePollingIntervals[taskId]; 
+                        if (isMainDisplay) { 
+                            document.getElementById('loader').style.display = 'none'; 
+                            document.getElementById('genBtn').disabled = false; 
+                        } 
+                    } 
+                } catch (e) {} 
+            }, 1500); 
+            
+            activePollingIntervals[taskId] = interval; 
+        } 
+        
+        function displayMainImage(base64Image, seed) { 
+            const img = document.getElementById('resultImg'); 
+            const previewArea = document.getElementById('previewArea'); 
+            img.src = base64Image; 
+            img.style.display = 'block'; 
+            previewArea.classList.remove('generating-active'); 
+            document.getElementById('loader').style.display = 'none'; 
+            document.getElementById('genBtn').disabled = false; 
+            if(document.getElementById('useRandom').checked) { 
+                document.getElementById('customSeed').value = seed; 
+            } 
+        } 
+        
+        // --- LIVE QUEUE LOGIC (NEW) --- 
+        async function loadLiveQueue() { 
+            const list = document.getElementById('liveQueueList'); 
+            list.innerHTML = '<div class="empty-state">Loading tasks...</div>'; 
+            try { 
+                const res = await fetch('/api/queue'); 
+                const data = await res.json(); 
+                if(data.data.length === 0) { 
+                    list.innerHTML = '<div class="empty-state">No active tasks. Engine is free!</div>'; 
+                    return; 
+                } 
+                list.innerHTML = ''; 
+                data.data.forEach(task => { 
+                    const item = document.createElement('div'); 
+                    item.className = 'queue-item'; 
+                    item.innerHTML = ` 
+                        <div class="info">${task.prompt}</div> 
+                        <div class="status-tag status-${task.status}" id="tag-${task.task_id}">${task.status}</div> 
+                    `; 
+                    list.appendChild(item); 
+                    
+                    // अगर टास्क पेंडिंग है और उसकी पोलिंग नहीं चल रही है, तो पोलिंग शुरू करें (यह रीलोड के बाद काम आएगा) 
+                    if ((task.status === 'processing' || task.status === 'queued') && !activePollingIntervals[task.task_id]) { 
+                        startPolling(task.task_id, false, task.prompt); 
+                    } else if (task.status === 'completed') { 
+                        const tag = document.getElementById(`tag-${task.task_id}`); 
+                        tag.innerText = "View Result"; 
+                        tag.onclick = async () => { 
+                            const s_res = await fetch(`/api/status/${task.task_id}`); 
+                            const s_data = await s_res.json(); 
+                            document.getElementById('prompt').value = task.prompt; 
+                            switchView('studio'); 
+                            displayMainImage(s_data.image, s_data.seed); 
+                        }; 
+                    } 
+                }); 
+            } catch(e) { 
+                list.innerHTML = '<div class="empty-state">Error fetching queue.</div>'; 
+            } 
+        } 
+        
+        // --- HISTORY LOGIC --- 
+        let historySkip = 0; 
+        const historyLimit = 10; 
+        let isLoadingHistory = false; 
+        let hasMoreHistory = true; 
+        
+        async function loadHistory(reset = false) { 
+            if (isLoadingHistory || (!hasMoreHistory && !reset)) return; 
+            isLoadingHistory = true; 
+            const grid = document.getElementById('historyGrid'); 
+            const loader = document.getElementById('historyLoader'); 
+            
+            if (reset) { 
+                historySkip = 0; 
+                hasMoreHistory = true; 
+                grid.innerHTML = ''; 
+            } 
+            
+            loader.style.display = 'block'; 
+            try { 
+                const res = await fetch(`/api/history?skip=${historySkip}&limit=${historyLimit}`); 
+                const data = await res.json(); 
+                if (data.status === 'success') { 
+                    if (data.data.length < historyLimit) hasMoreHistory = false; 
+                    if (data.data.length === 0 && reset) grid.innerHTML = '<div class="empty-state">No history found yet. Start generating!</div>'; 
+                    data.data.forEach(item => { 
+                        const card = document.createElement('div'); 
+                        card.className = 'history-card'; 
+                        card.id = `hist-${item._id}`; 
+                        card.innerHTML = ` 
+                            <img src="${item.image}" loading="lazy"> 
+                            <button class="delete-btn" onclick="deleteHistoryItem('${item._id}')"> 
+                                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg> 
+                            </button> 
+                            <div class="hist-info"> 
+                                <div class="hist-prompt">${item.prompt}</div> 
+                                <div class="hist-meta">${item.style} • ${item.ratio}</div> 
+                            </div> 
+                        `; 
+                        grid.appendChild(card); 
+                    }); 
+                    historySkip += data.data.length; 
+                } 
+            } catch (e) {} finally { 
+                loader.style.display = 'none'; 
+                isLoadingHistory = false; 
+            } 
+        } 
+        
+        async function deleteHistoryItem(id) { 
+            if(!confirm("Are you sure you want to delete this image?")) return; 
+            const card = document.getElementById(`hist-${id}`); 
+            card.style.opacity = '0.5'; 
+            try { 
+                const res = await fetch(`/api/history/${id}`, { method: 'DELETE' }); 
+                const data = await res.json(); 
+                if(data.status === 'success') { 
+                    card.remove(); 
+                } else { 
+                    alert("Could not delete item."); 
+                    card.style.opacity = '1'; 
+                } 
+            } catch(e) { 
+                alert("Network Error."); 
+                card.style.opacity = '1'; 
+            } 
+        } 
+        
+        window.addEventListener('scroll', () => { 
+            if (document.getElementById('view-history').classList.contains('active')) { 
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) loadHistory(); 
+            } 
+        }); 
+    </script> 
+</body> 
+</html>
