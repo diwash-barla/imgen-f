@@ -30,7 +30,9 @@ if os.path.exists("statics"):
     app.mount("/statics", StaticFiles(directory="statics"), name="statics")
 
 # HTTPX का एसिंक क्लाइंट
-async_client = httpx.AsyncClient(timeout=30.0)
+# ✅ नया कोड: (Timeout बढ़ाकर 300 सेकंड / 5 मिनट कर दिया)
+timeout_settings = httpx.Timeout(300.0, connect=60.0)
+async_client = httpx.AsyncClient(timeout=timeout_settings)
 
 class ImageRequestGateway(BaseModel):
     prompt: str
